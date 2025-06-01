@@ -12,18 +12,18 @@ db_pass = os.environ.get('DB_PASSWORD')
 db_host = os.environ.get('DB_HOST')
 db_name = os.environ.get('DB_NAME')
 
-# def get_db_secret(secret_name, region_name='us-east-1'):
-#     client = boto3.client('secretsmanager', region_name=region_name)
-#     get_secret_value_response = client.get_secret_value(SecretId=secret_name)
-#     secret = get_secret_value_response['SecretString']
-#     return json.loads(secret)
+def get_db_secret(secret_name, region_name='us-east-1'):
+    client = boto3.client('secretsmanager', region_name=region_name)
+    get_secret_value_response = client.get_secret_value(SecretId=secret_name)
+    secret = get_secret_value_response['SecretString']
+    return json.loads(secret)
 
-# #fetch credentials from AWS Secrets Manager
-# secret = get_db_secret('prod/rds/mydb')
+#fetch credentials from AWS Secrets Manager
+secret = get_db_secret('prod/rds/mydb')
 
 basedir = os.path.abspath(os.path.dirname(__name__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
-#app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{secret['username']}:{secret['password']}@{secret['host']}/{secret['dbname']}" 
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{secret['username']}:{secret['password']}@{secret['host']}/{secret['dbname']}" 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = 'your_secret_key'
 db = SQLAlchemy(app)
