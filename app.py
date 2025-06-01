@@ -62,6 +62,7 @@ class player(db.Model):
 @app.route('/')
 def index():
     player_id = session.get('player_id')
+    player_name = session.get('player_name')
     current_player = db.session.get(player, player_id) if player_id else None
     return render_template('index.html', player=current_player)
 
