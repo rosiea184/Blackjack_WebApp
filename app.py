@@ -1,0 +1,144 @@
+from flask import Flask, render_template, request, redirect, url_for, session
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+from blackjack_game import blackjack_round
+import boto3, json, os
+
+app = Flask(__name__)
+db_user = os.environ.get('DB_USER')
+db_pass = os.environ.get('DB_PASSWORD')
+db_host = os.environ.get('DB_HOST')
+db_name = os.environ.get('DB_NAME')
+
+# def get_db_secret(secret_name, region_name='us-east-1'):
+#     client = boto3.client('secretsmanager', region_name=region_name)
+#     get_secret_value_response = client.get_secret_value(SecretId=secret_name)
+    # secret = get_secret_value_response['SecretString']
+    # return json.loads(secret)
+
+# fetch credentials from AWS Secrets Manager
+# secret = get_db_secret('prod/rds/mydb')
+
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+# app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{secret['username']}:{secret['password']}@{secret['host']}/{secret['dbname']}" 
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.secret_key = 'your_secret_key'
+db = SQLAlchemy(app)
+
+class player(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    profile_picture = db.Column(db.String(200), nullable=True)
+    wins = db.Column(db.Integer, default=0)
+    losses = db.Column(db.Integer, default=0)
+    blackjacks = db.Column(db.Integer, default=0)
+    ties = db.Column(db.Integer, default=0)
+
+    def __repr__(self):
+        return f"Player('{self.name}', '{self.wins}', '{self.losses}', '{self.blackjacks}', '{self.ties}')"
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+@app.route('/register', methods=['POST', 'GET'])
+def register():
+    error = None
+    if request.method == 'POST':
+        # Handle form submission and register player
+        player_name = request.form.get('username')
+        password = request.form.get('password')
+
+        # Check if player already exists
+        existing_player = player.query.filter_by(name=player_name).first()
+        if existing_player:
+            error = "Username already taken. Please choose another."
+        else:
+            # Hash the password
+            hashed_password = generate_password_hash(password)
+            new_player = player(name=player_name, password_hash=hashed_password)
+            db.session.add(new_player)
+            db.session.commit()
+            # Store player ID in session
+            session['player_id'] = new_player.id
+            return redirect(url_for('blackjack'))
+    return render_template('register.html', error=error)
+
+@app.route('/login', methods=['POST', 'GET']) 
+def login():
+    error = None
+    if request.method == 'POST':
+        # Handle form submission and login player
+        player_name = request.form.get('username')
+        password = request.form.get('password')
+        existing_player = player.query.filter_by(name=player_name).first()
+        if existing_player and check_password_hash(existing_player.password_hash, password):
+            session['player_id'] = existing_player.id  # 👈 Save to session
+            return redirect(url_for('blackjack'))
+        else:
+            error = "Player not found or incorrect password. Please register first."
+    return render_template('login.html', error=error)
+
+@app.route('/blackjack', methods=['POST', 'GET'])
+def blackjack():
+    player_id = session.get('player_id')
+    if not player_id:
+        return redirect(url_for('index'))
+    current_player = player.query.get(player_id)
+    action = request.form.get('action') if request.method == 'POST' else None
+
+    game_state = blackjack_round(action, session)  # Call imported function
+
+    # Update stats
+    if game_state['result']:
+        if game_state['result'] == 'win':
+            current_player.wins += 1
+        elif game_state['result'] == 'loss':
+            current_player.losses += 1
+        elif game_state['result'] == 'blackjack':
+            current_player.wins += 1
+            current_player.blackjacks += 1
+        elif game_state['result'] == 'tie':
+            current_player.ties += 1   
+        db.session.commit()
+
+    return render_template(
+        'blackjack.html',
+        player_hand=game_state['player_hand'],
+        dealer_hand=game_state['dealer_hand'],
+        player_score=game_state['player_score'],
+        dealer_score=game_state['dealer_score'],
+        result=game_state['result'],
+        player=current_player
+    )
+@app.route('/blackjack/reset')
+def reset_blackjack():
+    session.pop('deck', None)
+    session.pop('player_hand', None)
+    session.pop('dealer_hand', None)
+    session.pop('game_over', None)
+    return redirect(url_for('blackjack'))
+
+@app.route('/scoreboard', methods=['POST', 'GET'])
+def scoreboard():
+    if request.method == 'POST':
+        # Handle form submission and update scoreboard
+        player_name = request.form.get('name')
+        player_score = request.form.get('score')
+        new_player = player(name=player_name, score=player_score)
+        db.session.add(new_player)
+        db.session.commit()
+        return redirect(url_for('scoreboard'))
+    players = player.query.all()
+    return render_template('scoreboard.html', players=players)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True)

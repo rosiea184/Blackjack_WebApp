@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Scoreboard{% endblock %}
+
+{% block content %}
+    <h1>Scoreboard</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Player</th>
+                <th>Wins</th>
+                <th>Losses</th>
+                <th>Ties</th>
+                <th>Blackjacks</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for player in players %}
+            <tr>
+                <td>{{ player.name }}</td>
+                <td>{{ player.wins }}</td>
+                <td>{{ player.losses }}</td>
+                <td>{{ player.ties }}</td>
+                <td>{{ player.blackjacks }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="/blackjack">Back to Game</a>
+    <a href="/logout">Logout</a>
+{% endblock %}

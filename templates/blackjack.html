@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Blackjack{% endblock %}
+
+{% block content %}
+    <h1>Blackjack Game</h1>
+
+    {% if player.profile_picture %}
+        <p><img src="{{ player.profile_picture }}" alt="Profile Picture" style="max-width:150px;" /></p>
+    {% endif %}
+
+    <p>Welcome, {{ player.name }}!</p>
+
+    <h2>Player Hand ({{ player_score }})</h2>
+    <ul>
+        {% for card in player_hand %}
+            <li>{{ card }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Dealer Hand ({{ dealer_score }})</h2>
+    <ul>
+        {% for card in dealer_hand %}
+            <li>{{ card }}</li>
+        {% endfor %}
+    </ul>
+
+    {% if result %}
+        <h2>Result: {{ result|capitalize }}</h2>
+        <form action="/blackjack/reset" method="get">
+            <button type="submit">Play Again</button>
+        </form>
+    {% else %}
+        <form action="/blackjack" method="post">
+            <button type="submit" name="action" value="hit">Hit</button>
+            <button type="submit" name="action" value="stand">Stand</button>
+        </form>
+    {% endif %}
+
+    <hr>
+    <p>
+        <a href="/scoreboard">View Scoreboard</a> |
+        <a href="/logout">Logout</a>
+    </p>
+{% endblock %}
