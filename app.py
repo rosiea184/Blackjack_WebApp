@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from blackjack_game import blackjack_round
-import boto3, json, os, logging, uuid
+import boto3, json, os, logging, uuid, re
 
 logging.basicConfig(level=logging.INFO, filename='app.log', format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -39,6 +39,11 @@ def upload_to_s3(file_path, s3_key):
         logging.error(f"Error uploading file to S3: {e}")
         return None
 
+# Clean filename to remove unsafe characters
+def safe_filename(filename):
+    name, ext = os.path.splitext(filename)
+    name = re.sub(r'[^\w\-_.]', '_', name)  # Replace unsafe chars
+    return f"{uuid.uuid4()}_{name}{ext}"
 
 class player(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -81,8 +86,7 @@ def register():
                 file = None
 
             if file:
-                ext = os.path.splitext(file.filename)[1]
-                unique_filename = f"{uuid.uuid4()}{ext}"
+                unique_filename = safe_filename(file.filename)
                 file_path = os.path.join(basedir, unique_filename)
                 file.save(file_path)
                 s3_url = upload_to_s3(file_path, unique_filename)
@@ -130,7 +134,7 @@ def blackjack():
     player_id = session.get('player_id')
     if not player_id:
         return redirect(url_for('index'))
-    current_player = db.session.get(player, player.id)
+    current_player = db.session.get(player, player_id)
     action = request.form.get('action') if request.method == 'POST' else None
 
     game_state = blackjack_round(action, session)  # Call imported function
