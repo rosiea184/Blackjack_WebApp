@@ -2,7 +2,9 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from blackjack_game import blackjack_round
-import boto3, json, os
+import boto3, json, os, logging
+
+logging.basicConfig(level=logging.INFO, filename='app.log', format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
 db_user = os.environ.get('DB_USER')
@@ -10,21 +12,33 @@ db_pass = os.environ.get('DB_PASSWORD')
 db_host = os.environ.get('DB_HOST')
 db_name = os.environ.get('DB_NAME')
 
-# def get_db_secret(secret_name, region_name='us-east-1'):
-#     client = boto3.client('secretsmanager', region_name=region_name)
-#     get_secret_value_response = client.get_secret_value(SecretId=secret_name)
-    # secret = get_secret_value_response['SecretString']
-    # return json.loads(secret)
+def get_db_secret(secret_name, region_name='us-east-1'):
+    client = boto3.client('secretsmanager', region_name=region_name)
+    get_secret_value_response = client.get_secret_value(SecretId=secret_name)
+    secret = get_secret_value_response['SecretString']
+    return json.loads(secret)
 
-# fetch credentials from AWS Secrets Manager
-# secret = get_db_secret('prod/rds/mydb')
+#fetch credentials from AWS Secrets Manager
+secret = get_db_secret('prod/rds/mydb')
 
-
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
-# app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{secret['username']}:{secret['password']}@{secret['host']}/{secret['dbname']}" 
+basedir = os.path.abspath(os.path.dirname(__name__))
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{secret['username']}:{secret['password']}@{secret['host']}/{secret['dbname']}" 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = 'your_secret_key'
 db = SQLAlchemy(app)
+BUCKET_NAME = 'flask-todo-bucket'
+
+def upload_to_s3(file_path, s3_key):
+    s3 = boto3.client('s3')
+    file_name = os.path.basename(file_path)
+    try:
+        s3.upload_file(file_path, BUCKET_NAME, file_name)
+        logging.info(f"Uploaded {file_name} to S3 bucket {BUCKET_NAME} with key {s3_key}.")
+        return f"https://{BUCKET_NAME}.s3.amazonaws.com/{s3_key}"  # Return the S3 URL of the uploaded file
+    except Exception as e:
+        logging.error(f"Error uploading file to S3: {e}")
+        return None
 
 class player(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -63,6 +77,21 @@ def register():
             # Store player ID in session
             session['player_id'] = new_player.id
             return redirect(url_for('blackjack'))
+        try:
+            file = request.files.get('file')
+        except Exception as e:
+            logging.error(f"Error retrieving file: {e}")
+            file = None
+        if file:
+            # Save the file locally and upload to S3
+            file_path = os.path.join(basedir, file.filename)  # Save the file locally
+            file.save(file_path)
+            s3_url = upload_to_s3(file_path, file.filename)  # Upload to S3
+            os.remove(file_path)  # Remove the local file after uploading
+            new_player.profile_picture = s3_url
+            logging.info(f"File uploaded to S3: {s3_url}")
+        else:
+            logging.info("No file received.")
     return render_template('register.html', error=error)
 
 @app.route('/login', methods=['POST', 'GET']) 
@@ -141,4 +170,4 @@ def logout():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', debug=True)
