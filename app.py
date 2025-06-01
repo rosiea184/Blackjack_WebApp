@@ -61,7 +61,9 @@ class player(db.Model):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    player_id = session.get('player_id')
+    current_player = db.session.get(player, player_id) if player_id else None
+    return render_template('index.html', player=current_player)
 
 @app.route('/register', methods=['POST', 'GET'])
 def register():
@@ -104,6 +106,7 @@ def register():
             db.session.add(new_player)
             db.session.commit()
             session['player_id'] = new_player.id
+            session['player_name'] = new_player.name
             return redirect(url_for('blackjack'))
 
     return render_template('register.html', error=error)
@@ -119,6 +122,7 @@ def login():
         existing_player = player.query.filter_by(name=player_name).first()
         if existing_player and check_password_hash(existing_player.password_hash, password):
             session['player_id'] = existing_player.id  # 👈 Save to session
+            session['player_name'] = existing_player.name
             return redirect(url_for('blackjack'))
         else:
             error = "Player not found or incorrect password. Please register first."
@@ -129,6 +133,35 @@ def profile():
     player_id = session.get('player_id')
     current_player = db.session.get(player, player_id)
     return render_template('profile.html', player=current_player)
+
+@app.route('/update_picture', methods=['POST'])
+def update_picture():
+    player_id = session.get('player_id')
+    if not player_id:
+        return redirect(url_for('login'))
+
+    current_player = db.session.get(player, player_id)
+    file = request.files.get('file')
+
+    if file:
+        ext = os.path.splitext(file.filename)[1]
+        unique_filename = f"{uuid.uuid4()}{ext}"
+        file_path = os.path.join(basedir, unique_filename)
+        file.save(file_path)
+
+        s3_url = upload_to_s3(file_path, unique_filename)
+        os.remove(file_path)
+
+        if s3_url:
+            current_player.profile_picture = s3_url
+            db.session.commit()
+            logging.info(f"Updated profile picture: {s3_url}")
+        else:
+            logging.error("Failed to upload new profile picture.")
+    else:
+        logging.info("No new picture uploaded.")
+
+    return redirect(url_for('index'))
 
 @app.route('/blackjack', methods=['POST', 'GET'])
 def blackjack():

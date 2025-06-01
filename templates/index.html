@@ -4,7 +4,23 @@
 
 {% block content %}
     <h1>Let's Play Blackjack!</h1>
-    <p>Sign up or Log in to play!</p>
+    {% if session.get('player_id') %}
+        <p>Welcome back, {{ session.get('player_name') }}!</p>
+        <a href="/blackjack">Start Playing</a>
+        {% if player.profile_picture %}
+            <p><img src="{{ player.profile_picture }}" alt="Profile Picture" style="max-width:150px;" /></p>
+        {% else %}
+            <p>No profile picture set.</p>
+        {% endif %}
+
+    <form action="{{ url_for('update_picture') }}" method="post" enctype="multipart/form-data">
+    <label for="file">Change Profile Picture:</label>
+    <input type="file" name="file" accept="image/*" required>
+    <button type="submit">Update Picture</button>
+    </form>
+    {% else %}
+        <p>Sign up or Log in to play!</p>
     <a href="/register">Sign Up</a>
     <a href="/login">Log In</a>
+    {% endif %}
 {% endblock %}
