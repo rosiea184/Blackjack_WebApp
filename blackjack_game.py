@@ -9,6 +9,12 @@ class Card:
     def __str__(self):
         return f"{self.value} of {self.suit}"
 
+def get_card_image(card):
+    rank = card.value.lower()
+    suit = card.suit.lower()
+    return f"/static/cards/{rank}_of_{suit}.png"
+
+
 def card_from_string(card_str):
     # Example input: "Ace of Spades"
     parts = card_str.split(" of ")
@@ -160,5 +166,7 @@ def blackjack_round(action=None, session=None):
         'dealer_hand': [str(card) for card in dealer.hand],
         'player_score': player.score,
         'dealer_score': dealer.score,
-        'result': result
-        }
+        'result': result,
+        'player_images': [get_card_image(card) for card in player.hand],
+        'dealer_images': [get_card_image(card) for card in dealer.hand],
+    }

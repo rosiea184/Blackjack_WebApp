@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+    <h1>{{ player.name }}'s Profile</h1>
+    {% if player.profile_picture %}
+        <p><img src="{{ player.profile_picture }}" alt="Profile Picture" style="max-width:150px;" /></p>
+    {% else %}
+        <p>No profile picture set.</p>
+    {% endif %}
+
+    <form action="{{ url_for('update_picture') }}" method="post" enctype="multipart/form-data">
+        <label for="file">Change Profile Picture:</label>
+        <input type="file" name="file" accept="image/*" required>
+        <button type="submit">Update Picture</button>
+    </form>
+{% endblock %}

@@ -1,7 +1,8 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from blackjack_game import blackjack_round
+from functools import wraps
 import boto3, json, os, logging, uuid, re
 
 logging.basicConfig(level=logging.INFO, filename='app.log', format='%(asctime)s - %(levelname)s - %(message)s')
@@ -45,6 +46,15 @@ def safe_filename(filename):
     name, ext = os.path.splitext(filename)
     name = re.sub(r'[^\w\-_.]', '_', name)  # Replace unsafe chars
     return f"{uuid.uuid4()}_{name}{ext}"
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('player_id'):
+            flash("Please log in to access this page.")
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 class player(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -130,16 +140,16 @@ def login():
     return render_template('login.html', error=error)
 
 @app.route('/profile')
+@login_required
 def profile():
     player_id = session.get('player_id')
     current_player = db.session.get(player, player_id)
     return render_template('profile.html', player=current_player)
 
 @app.route('/update_picture', methods=['POST'])
+@login_required
 def update_picture():
     player_id = session.get('player_id')
-    if not player_id:
-        return redirect(url_for('login'))
 
     current_player = db.session.get(player, player_id)
     file = request.files.get('file')
@@ -162,13 +172,12 @@ def update_picture():
     else:
         logging.info("No new picture uploaded.")
 
-    return redirect(url_for('index'))
+    return redirect(url_for('profile'))
 
 @app.route('/blackjack', methods=['POST', 'GET'])
+@login_required
 def blackjack():
     player_id = session.get('player_id')
-    if not player_id:
-        return redirect(url_for('index'))
     current_player = db.session.get(player, player_id)
     action = request.form.get('action') if request.method == 'POST' else None
 
@@ -205,7 +214,11 @@ def reset_blackjack():
     return redirect(url_for('blackjack'))
 
 @app.route('/scoreboard', methods=['POST', 'GET'])
+@login_required
 def scoreboard():
+    player_id = session.get('player_id')
+    if not player_id:
+        return redirect(url_for('login'))
     if request.method == 'POST':
         # Handle form submission and update scoreboard
         player_name = request.form.get('name')

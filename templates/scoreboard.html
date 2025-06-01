@@ -3,8 +3,8 @@
 {% block title %}Scoreboard{% endblock %}
 
 {% block content %}
-    <h1>Scoreboard</h1>
-    <table>
+    <h1 style="font-family: 'Segoe UI'; margin-top: 30px;">🏆 Scoreboard 🏆</h1>
+    <table class="casino-scoreboard">
         <thead>
             <tr>
                 <th>Player</th>
@@ -26,6 +26,5 @@
             {% endfor %}
         </tbody>
     </table>
-    <a href="/blackjack">Back to Game</a>
-    <a href="/logout">Logout</a>
+    <p><a href="/blackjack">Back to Game</a> | <a href="/logout">Logout</a></p>
 {% endblock %}

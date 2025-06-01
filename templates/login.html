@@ -4,12 +4,22 @@
 
 {% block content %}
     <h1>Log In to Your Account</h1>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul class="flashes">
+                {% for message in messages %}
+                    <li style="color: red;">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
     <form action="/login" method="post">
         <input type="text" name="username" placeholder="Username" required />
         <input type="password" name="password" placeholder="Password" required />
         <button type="submit">Log In</button>
     </form>
     <p>Don't have an account? <a href="/register">Sign Up here</a></p>
+    <p><a href="/index">Back to Home</a></p>
     {% if error %}
         <p style="color: red;">{{ error }}</p>
     {% endif %}

@@ -1,11 +1,13 @@
 # Blackjack_WebApp
 A fun web app to play blackjack and see your scores against other players.
 ## Table of Contents
-   1. Introduction
-   2. Features
-   3. Installation
+   1. [Introduction](#introduction)
+   2. [Features](#features)
+   3. [Installation](#installation)
 ## Introduction
+   Play Blackjack against the dealer and compare your wins and losses against other players! Log in with your own unique account and play to your heart's content
 
+   This app uses Flask for the backend, MySQL for data storage, and EC2 for hosting.
 ## Features
    - User Authentication System
       - Secure registration and login functionality

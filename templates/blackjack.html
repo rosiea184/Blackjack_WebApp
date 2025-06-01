@@ -1,45 +1,66 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% block title %}Blackjack{% endblock %} {% block
+content %}
+<h1>🎲 Blackjack Game 🎲</h1>
 
-{% block title %}Blackjack{% endblock %}
+{% if player.profile_picture %}
+<p>
+  <img
+    src="{{ player.profile_picture }}"
+    alt="Profile Picture"
+    style="max-width: 150px"
+  />
+</p>
+{% endif %}
 
-{% block content %}
-    <h1>Blackjack Game</h1>
+<p>Welcome, {{ player.name }}!</p>
 
-    {% if player.profile_picture %}
-        <p><img src="{{ player.profile_picture }}" alt="Profile Picture" style="max-width:150px;" /></p>
-    {% endif %}
+<h2>Player Hand ({{ player_score }})</h2>
+<div class="card-row">
+  {% for card in player_hand %} {% set parts = card.split(' of ') %} {% if
+  parts|length == 2 %} {% set filename = parts[0]|lower ~ "_of_" ~
+  parts[1]|lower ~ ".png" %}
+  <img
+    src="{{ url_for('static', filename='cards/' ~ filename) }}"
+    alt="{{ card }}"
+    class="card-img"
+    alt="Card"
+  />
+  {% else %}
+  <p>{{ card }}</p>
+  {# fallback in case parsing fails #} {% endif %} {% endfor %}
+</div>
 
-    <p>Welcome, {{ player.name }}!</p>
+<h2>Dealer Hand ({{ dealer_score }})</h2>
+<div class="card-row">
+  {% for card in dealer_hand %} {% set parts = card.split(' of ') %} {% if
+  parts|length == 2 %} {% set filename = parts[0]|lower ~ "_of_" ~
+  parts[1]|lower ~ ".png" %}
+  <img
+    src="{{ url_for('static', filename='cards/' ~ filename) }}"
+    alt="{{ card }}"
+    class="card-img"
+    alt="Card"
+  />
+  {% else %}
+  <p>{{ card }}</p>
+  {% endif %} {% endfor %}
+</div>
 
-    <h2>Player Hand ({{ player_score }})</h2>
-    <ul>
-        {% for card in player_hand %}
-            <li>{{ card }}</li>
-        {% endfor %}
-    </ul>
+{% if result %}
+<h2>Result: {{ result|capitalize }}</h2>
+<form action="/blackjack/reset" method="get">
+  <button type="submit">Play Again</button>
+</form>
+{% else %}
+<form action="/blackjack" method="post">
+  <button type="submit" name="action" value="hit">Hit</button>
+  <button type="submit" name="action" value="stand">Stand</button>
+</form>
+{% endif %}
 
-    <h2>Dealer Hand ({{ dealer_score }})</h2>
-    <ul>
-        {% for card in dealer_hand %}
-            <li>{{ card }}</li>
-        {% endfor %}
-    </ul>
-
-    {% if result %}
-        <h2>Result: {{ result|capitalize }}</h2>
-        <form action="/blackjack/reset" method="get">
-            <button type="submit">Play Again</button>
-        </form>
-    {% else %}
-        <form action="/blackjack" method="post">
-            <button type="submit" name="action" value="hit">Hit</button>
-            <button type="submit" name="action" value="stand">Stand</button>
-        </form>
-    {% endif %}
-
-    <hr>
-    <p>
-        <a href="/scoreboard">View Scoreboard</a> |
-        <a href="/logout">Logout</a>
-    </p>
+<hr />
+<p>
+  <a href="/scoreboard">View Scoreboard</a> |
+  <a href="/logout">Logout</a>
+</p>
 {% endblock %}
