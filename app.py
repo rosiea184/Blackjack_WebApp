@@ -72,26 +72,29 @@ def register():
             # Hash the password
             hashed_password = generate_password_hash(password)
             new_player = player(name=player_name, password_hash=hashed_password)
+            
+            # Handle profile picture upload
+            try:
+                file = request.files.get('file')
+            except Exception as e:
+                logging.error(f"Error retrieving file: {e}")
+                file = None
+
+            if file:
+                file_path = os.path.join(basedir, file.filename)
+                file.save(file_path)
+                s3_url = upload_to_s3(file_path, file.filename)
+                os.remove(file_path)
+                new_player.profile_picture = s3_url
+                logging.info(f"File uploaded to S3: {s3_url}")
+            else:
+                logging.info("No file received.")
+
+            # Add to DB
             db.session.add(new_player)
             db.session.commit()
-            # Store player ID in session
             session['player_id'] = new_player.id
             return redirect(url_for('blackjack'))
-        try:
-            file = request.files.get('file')
-        except Exception as e:
-            logging.error(f"Error retrieving file: {e}")
-            file = None
-        if file:
-            # Save the file locally and upload to S3
-            file_path = os.path.join(basedir, file.filename)  # Save the file locally
-            file.save(file_path)
-            s3_url = upload_to_s3(file_path, file.filename)  # Upload to S3
-            os.remove(file_path)  # Remove the local file after uploading
-            new_player.profile_picture = s3_url
-            logging.info(f"File uploaded to S3: {s3_url}")
-        else:
-            logging.info("No file received.")
     return render_template('register.html', error=error)
 
 @app.route('/login', methods=['POST', 'GET']) 
