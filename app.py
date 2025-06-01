@@ -90,6 +90,7 @@ def register():
 
                 if s3_url:
                     new_player.profile_picture = s3_url
+                    print(new_player.profile_picture)
                     logging.info(f"File uploaded to S3: {s3_url}")
             else:
                 logging.info("No file received.")
@@ -118,12 +119,18 @@ def login():
             error = "Player not found or incorrect password. Please register first."
     return render_template('login.html', error=error)
 
+@app.route('/profile')
+def profile():
+    player_id = session.get('player_id')
+    current_player = db.session.get(player, player_id)
+    return render_template('profile.html', player=current_player)
+
 @app.route('/blackjack', methods=['POST', 'GET'])
 def blackjack():
     player_id = session.get('player_id')
     if not player_id:
         return redirect(url_for('index'))
-    current_player = player.query.get(player_id)
+    current_player = db.session.get(player, player.id)
     action = request.form.get('action') if request.method == 'POST' else None
 
     game_state = blackjack_round(action, session)  # Call imported function
