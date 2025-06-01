@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from blackjack_game import blackjack_round
-import boto3, json, os, logging
+import boto3, json, os, logging, uuid
 
 logging.basicConfig(level=logging.INFO, filename='app.log', format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -31,14 +31,14 @@ BUCKET_NAME = 'flask-todo-bucket'
 
 def upload_to_s3(file_path, s3_key):
     s3 = boto3.client('s3')
-    file_name = os.path.basename(file_path)
     try:
-        s3.upload_file(file_path, BUCKET_NAME, file_name)
-        logging.info(f"Uploaded {file_name} to S3 bucket {BUCKET_NAME} with key {s3_key}.")
-        return f"https://{BUCKET_NAME}.s3.amazonaws.com/{s3_key}"  # Return the S3 URL of the uploaded file
+        s3.upload_file(file_path, BUCKET_NAME, s3_key)
+        logging.info(f"Uploaded {file_path} to S3 bucket {BUCKET_NAME} with key {s3_key}.")
+        return f"https://{BUCKET_NAME}.s3.amazonaws.com/{s3_key}"
     except Exception as e:
         logging.error(f"Error uploading file to S3: {e}")
         return None
+
 
 class player(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -56,11 +56,11 @@ class player(db.Model):
 @app.route('/')
 def index():
     return render_template('index.html')
+
 @app.route('/register', methods=['POST', 'GET'])
 def register():
     error = None
     if request.method == 'POST':
-        # Handle form submission and register player
         player_name = request.form.get('username')
         password = request.form.get('password')
 
@@ -72,7 +72,7 @@ def register():
             # Hash the password
             hashed_password = generate_password_hash(password)
             new_player = player(name=player_name, password_hash=hashed_password)
-            
+
             # Handle profile picture upload
             try:
                 file = request.files.get('file')
@@ -81,21 +81,27 @@ def register():
                 file = None
 
             if file:
-                file_path = os.path.join(basedir, file.filename)
+                ext = os.path.splitext(file.filename)[1]
+                unique_filename = f"{uuid.uuid4()}{ext}"
+                file_path = os.path.join(basedir, unique_filename)
                 file.save(file_path)
-                s3_url = upload_to_s3(file_path, file.filename)
+                s3_url = upload_to_s3(file_path, unique_filename)
                 os.remove(file_path)
-                new_player.profile_picture = s3_url
-                logging.info(f"File uploaded to S3: {s3_url}")
+
+                if s3_url:
+                    new_player.profile_picture = s3_url
+                    logging.info(f"File uploaded to S3: {s3_url}")
             else:
                 logging.info("No file received.")
 
-            # Add to DB
+            # Now add to DB and commit once
             db.session.add(new_player)
             db.session.commit()
             session['player_id'] = new_player.id
             return redirect(url_for('blackjack'))
+
     return render_template('register.html', error=error)
+
 
 @app.route('/login', methods=['POST', 'GET']) 
 def login():
