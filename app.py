@@ -126,6 +126,7 @@ def register():
 @app.route('/login', methods=['POST', 'GET']) 
 def login():
     error = None
+    show_forgot_password = False
     if request.method == 'POST':
         # Handle form submission and login player
         player_name = request.form.get('username')
