@@ -128,19 +128,20 @@ def login():
     error = None
     show_forgot_password = False
     if request.method == 'POST':
+        if 'login_submit' in request.form:
         # Handle form submission and login player
-        player_name = request.form.get('username')
-        password = request.form.get('password')
-        existing_player = player.query.filter_by(name=player_name).first()
-        if not existing_player:
-            error = "Username not found. Please register first."
-        elif not check_password_hash(existing_player.password_hash, password):
-            error = "Incorrect password. Please try again."
-        else:
-            session['player_id'] = existing_player.id
-            session['player_name'] = existing_player.name
-            return redirect(url_for('blackjack'))
-    elif 'forgot_password_submit' in request.form:
+            player_name = request.form.get('username')
+            password = request.form.get('password')
+            existing_player = player.query.filter_by(name=player_name).first()
+            if not existing_player:
+                error = "Username not found. Please register first."
+            elif not check_password_hash(existing_player.password_hash, password):
+                error = "Incorrect password. Please try again."
+            else:
+                session['player_id'] = existing_player.id
+                session['player_name'] = existing_player.name
+                return redirect(url_for('blackjack'))
+        elif 'forgot_password_submit' in request.form:
             # User clicked the Forgot Password button, show the forgot password form
             show_forgot_password = True
     return render_template('login.html', error=error, show_forgot_password=show_forgot_password)
