@@ -131,13 +131,18 @@ def login():
         player_name = request.form.get('username')
         password = request.form.get('password')
         existing_player = player.query.filter_by(name=player_name).first()
-        if existing_player and check_password_hash(existing_player.password_hash, password):
-            session['player_id'] = existing_player.id  # 👈 Save to session
+        if not existing_player:
+            error = "Username not found. Please register first."
+        elif not check_password_hash(existing_player.password_hash, password):
+            error = "Incorrect password. Please try again."
+        else:
+            session['player_id'] = existing_player.id
             session['player_name'] = existing_player.name
             return redirect(url_for('blackjack'))
-        else:
-            error = "Player not found or incorrect password. Please register first."
-    return render_template('login.html', error=error)
+    elif 'forgot_password_submit' in request.form:
+            # User clicked the Forgot Password button, show the forgot password form
+            show_forgot_password = True
+    return render_template('login.html', error=error, show_forgot_password=show_forgot_password)
 
 @app.route('/profile')
 @login_required
@@ -229,6 +234,61 @@ def scoreboard():
         return redirect(url_for('scoreboard'))
     players = player.query.all()
     return render_template('scoreboard.html', players=players)
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        player_name = request.form.get('username')
+        existing_player = player.query.filter_by(name=player_name).first()
+        
+        if existing_player:
+            # For now, just display the password (or hashed password, if you want)
+            # WARNING: Displaying passwords like this is NOT secure and only for development/testing
+            
+            # You could decrypt or store plain text password if you had it, 
+            # but since you store hashed passwords, just say "Password reset feature coming soon"
+            # Or if you have plaintext (not recommended), you could show it here.
+            
+            # For now, let's just display a fake "password reset link" message.
+            
+            # Future email send code (commented):
+            # reset_token = str(uuid.uuid4())
+            # existing_player.reset_token = reset_token
+            # existing_player.reset_token_expiry = datetime.utcnow() + timedelta(hours=1)
+            # db.session.commit()
+            # send_password_reset_email(existing_player.email, reset_token)
+            session['reset_username'] = player_name
+            return redirect(url_for('reset_password'))
+
+        else:
+            error = "Username not found. Please try again."
+            return render_template('login.html', error=error)
+    return render_template('forgot_password.html')
+
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    reset_username = session.get('reset_username')
+    if not reset_username:
+        return redirect(url_for('forgot_password'))
+    
+    if request.method == 'POST':
+        new_password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+
+        if new_password != confirm_password:
+            error = "Passwords do not match."
+            return render_template('reset_password.html', error=error)
+
+        player_to_update = player.query.filter_by(name=reset_username).first()
+        if player_to_update:
+            player_to_update.password_hash = generate_password_hash(new_password)
+            db.session.commit()
+            session.pop('reset_username', None)
+            return "Password reset successful! You can now <a href='/login'>log in</a>."
+        else:
+            return "User not found. Please try again."
+
+    return render_template('reset_password.html')
 
 @app.route('/logout')
 def logout():
