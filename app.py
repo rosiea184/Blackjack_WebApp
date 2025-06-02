@@ -59,7 +59,7 @@ def login_required(f):
 class player(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
     profile_picture = db.Column(db.String(200), nullable=True)
     wins = db.Column(db.Integer, default=0)
     losses = db.Column(db.Integer, default=0)
@@ -283,9 +283,9 @@ def reset_password():
 
         player_to_update = player.query.filter_by(name=reset_username).first()
         if player_to_update:
-            print(f"[DEBUG] Old password hash: {player_to_update.password_hash}")
+            #print(f"[DEBUG] Old password hash: {player_to_update.password_hash}")
             player_to_update.password_hash = generate_password_hash(new_password)
-            print(f"[DEBUG] New password hash: {player_to_update.password_hash}")
+            #print(f"[DEBUG] New password hash: {player_to_update.password_hash}")
             assert check_password_hash(player_to_update.password_hash, new_password)
             db.session.commit()
             session.pop('reset_username', None)
