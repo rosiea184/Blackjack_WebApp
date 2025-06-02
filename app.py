@@ -289,7 +289,8 @@ def reset_password():
             assert check_password_hash(player_to_update.password_hash, new_password)
             db.session.commit()
             session.pop('reset_username', None)
-            return "Password reset successful! You can now <a href='/login'>log in</a>."
+            error = "Password reset successful!"
+            return render_template('login.html', error=error)
         else:
             return "User not found. Please try again."
 
